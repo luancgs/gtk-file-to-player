@@ -1,7 +1,11 @@
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Button, glib};
+use gtk::{
+    Application, ApplicationWindow, Entry, Label, ListBox, Orientation, ScrolledWindow, glib,
+};
+use std::cell::RefCell;
+use std::rc::Rc;
 
-const APP_ID: &str = "org.gtk_rs.HelloWorld2";
+const APP_ID: &str = "org.luancgs.file-to-player";
 
 fn main() -> glib::ExitCode {
     // Create a new application
@@ -15,28 +19,96 @@ fn main() -> glib::ExitCode {
 }
 
 fn build_ui(app: &Application) {
-    // Create a button with label and margins
-    let button = Button::builder()
-        .label("Press me!")
+    let search_data = vec![
+        "apple".to_string(),
+        "banana".to_string(),
+        "cherry".to_string(),
+        "date".to_string(),
+        "elderberry".to_string(),
+        "fig".to_string(),
+        "grape".to_string(),
+        "honeydew".to_string(),
+        "kiwi".to_string(),
+        "lemon".to_string(),
+        "mango".to_string(),
+        "nectarine".to_string(),
+        "orange".to_string(),
+        "pineapple".to_string(),
+        "quince".to_string(),
+        "raspberry".to_string(),
+        "strawberry".to_string(),
+        "tomato".to_string(),
+        "ugli".to_string(),
+        "vanilla".to_string(),
+        "watermelon".to_string(),
+        "xigua".to_string(),
+        "yuzu".to_string(),
+        "zucchini".to_string(),
+        "avocado".to_string(),
+        "blueberry".to_string(),
+        "cantaloupe".to_string(),
+        "dragonfruit".to_string(),
+    ];
+
+    let list_box = Rc::new(RefCell::new(ListBox::new()));
+    list_box
+        .borrow_mut()
+        .set_selection_mode(gtk::SelectionMode::None);
+
+    let scrolled_window = ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        .min_content_height(400)
+        .child(&*list_box.borrow())
+        .build();
+
+    let search_entry = Entry::builder()
+        .placeholder_text("Enter text to search...")
         .margin_top(12)
         .margin_bottom(12)
         .margin_start(12)
         .margin_end(12)
+        .primary_icon_name("system-search")
         .build();
 
-    // Connect to "clicked" signal of `button`
-    button.connect_clicked(|button| {
-        // Set the label to "Hello World!" after the button has been clicked on
-        button.set_label("Hello World!");
+    let list_box_clone = Rc::clone(&list_box);
+    let search_data_clone = Rc::new(search_data);
+
+    search_entry.connect_changed(move |entry| {
+        let text = entry.text().to_lowercase();
+
+        // Clear the current list
+        while let Some(child) = list_box_clone.borrow().first_child() {
+            list_box_clone.borrow().remove(&child);
+        }
+
+        // Filter and display matching items
+        for item in search_data_clone.iter() {
+            if item.contains(&text) {
+                let label = Label::new(Some(item));
+                list_box_clone.borrow().append(&label);
+            }
+        }
     });
 
-    // Create a window
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .title("My GTK App")
-        .child(&button)
+    let main_box = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
+        .margin_top(12)
+        .margin_bottom(12)
+        .margin_start(12)
+        .margin_end(12)
+        .spacing(6)
         .build();
 
-    // Present window
+    main_box.append(&search_entry);
+    main_box.append(&scrolled_window);
+
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .title("File to Player")
+        .default_width(400)
+        .default_height(600)
+        .child(&main_box)
+        .build();
+
     window.present();
 }
