@@ -1,0 +1,4 @@
+// rename this file to config.toml and fill in the values
+
+window_title = "My Video Player"
+search_placeholder = "Search for videos"

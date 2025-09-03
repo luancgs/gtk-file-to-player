@@ -1,3 +1,6 @@
+mod config;
+
+use config::AppConfig;
 use gtk::prelude::*;
 use gtk::{
     Application, ApplicationWindow, Entry, Label, ListBox, Orientation, ScrolledWindow, glib,
@@ -8,17 +11,22 @@ use std::rc::Rc;
 const APP_ID: &str = "org.luancgs.file-to-player";
 
 fn main() -> glib::ExitCode {
+    // Load configuration
+    let config = AppConfig::load();
+
     // Create a new application
     let app = Application::builder().application_id(APP_ID).build();
 
     // Connect to "activate" signal of `app`
-    app.connect_activate(build_ui);
+    app.connect_activate(move |app| {
+        build_ui(app, config.clone());
+    });
 
     // Run the application
     app.run()
 }
 
-fn build_ui(app: &Application) {
+fn build_ui(app: &Application, config: AppConfig) {
     let search_data = vec![
         "apple".to_string(),
         "banana".to_string(),
@@ -62,7 +70,7 @@ fn build_ui(app: &Application) {
         .build();
 
     let search_entry = Entry::builder()
-        .placeholder_text("Enter text to search...")
+        .placeholder_text(config.search_placeholder.as_deref().unwrap_or("Search..."))
         .margin_top(12)
         .margin_bottom(12)
         .margin_start(12)
@@ -104,7 +112,7 @@ fn build_ui(app: &Application) {
 
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("File to Player")
+        .title(config.window_title)
         .default_width(400)
         .default_height(600)
         .child(&main_box)
