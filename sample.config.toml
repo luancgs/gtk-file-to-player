@@ -1,4 +1,6 @@
 // rename this file to config.toml and fill in the values
 
+database_path = "/path/to/database"
+
 window_title = "My Video Player"
 search_placeholder = "Search for videos"
