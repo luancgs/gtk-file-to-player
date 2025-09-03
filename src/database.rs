@@ -2,15 +2,21 @@ use sqlite::{Connection, Error, State};
 
 #[derive(Debug)]
 pub struct Song {
-    pub id: i64,
     pub number: i64,
     pub title: String,
-    pub lyrics: String,
+    pub file: String,
 }
 
-pub fn connect_to_database(path: &str) -> Result<Connection, Error> {
-    let connection = Connection::open(path)?;
-    Ok(connection)
+pub fn connect_to_database(path: &str) -> Connection {
+    let connection = Connection::open(path);
+
+    match connection {
+        Ok(conn) => conn,
+        Err(err) => {
+            eprintln!("Failed to connect to database: {}", err);
+            std::process::exit(1);
+        }
+    }
 }
 
 pub fn get_songs(connection: &Connection, text: &str) -> Result<Vec<Song>, Error> {
@@ -27,10 +33,9 @@ pub fn get_songs(connection: &Connection, text: &str) -> Result<Vec<Song>, Error
 
     while let Ok(State::Row) = statement.next() {
         let song = Song {
-            id: statement.read::<i64, _>("id")?,
             number: statement.read::<i64, _>("number")?,
             title: statement.read::<String, _>("title")?,
-            lyrics: statement.read::<String, _>("lyrics")?,
+            file: statement.read::<String, _>("file")?,
         };
 
         results.push(song);
