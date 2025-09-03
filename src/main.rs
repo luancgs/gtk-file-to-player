@@ -1,10 +1,13 @@
 mod config;
 mod database;
+mod player;
 
 use config::AppConfig;
+use database::Song;
 use gtk::prelude::*;
 use gtk::{
-    Application, ApplicationWindow, Entry, Label, ListBox, Orientation, ScrolledWindow, glib,
+    Application, ApplicationWindow, Button, Entry, Label, ListBox, Orientation, ScrolledWindow,
+    glib,
 };
 use sqlite::Connection;
 use std::cell::RefCell;
@@ -16,8 +19,11 @@ fn main() -> glib::ExitCode {
     // Load configuration
     let config = AppConfig::load();
 
+    // Ensure VLC is installed and available
+    player::ensure_player();
+
     // Initialize database connection
-    let connection = Rc::new(database::connect_to_database(&config.database_path).unwrap());
+    let connection = Rc::new(database::connect_to_database(&config.database_path));
 
     // Create a new application
     let app = Application::builder().application_id(APP_ID).build();
@@ -54,6 +60,7 @@ fn build_ui(app: &Application, config: AppConfig, connection: Rc<Connection>) {
 
     let connection_clone = Rc::clone(&connection);
     let list_box_clone = Rc::clone(&list_box);
+    let config_clone = config.clone();
 
     search_entry.connect_changed(move |entry| {
         let text = entry.text().to_lowercase();
@@ -66,8 +73,8 @@ fn build_ui(app: &Application, config: AppConfig, connection: Rc<Connection>) {
         let results = database::get_songs(&connection_clone, &text).unwrap();
 
         for song in results.iter() {
-            let label = Label::new(Some(&song.title));
-            list_box_clone.borrow().append(&label);
+            let button = create_song_button(config_clone.clone(), song);
+            list_box_clone.borrow().append(&button);
         }
     });
 
@@ -92,4 +99,19 @@ fn build_ui(app: &Application, config: AppConfig, connection: Rc<Connection>) {
         .build();
 
     window.present();
+}
+
+fn create_song_button(config: AppConfig, song: &Song) -> Button {
+    let button = Button::new();
+    let text = format!("{}. {}", &song.number, &song.title);
+    let label = Label::new(Some(&text));
+    button.set_child(Some(&label));
+
+    let song_full_path = format!("{}/{}", config.song_directory, song.file);
+
+    button.connect_clicked(move |_| {
+        player::play_song(&song_full_path.clone());
+    });
+
+    button
 }
