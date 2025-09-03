@@ -3,6 +3,7 @@ use std::fs;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AppConfig {
+    pub database_path: String,
     pub window_title: String,
     pub search_placeholder: Option<String>,
 }

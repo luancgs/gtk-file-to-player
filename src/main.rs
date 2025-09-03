@@ -1,10 +1,12 @@
 mod config;
+mod database;
 
 use config::AppConfig;
 use gtk::prelude::*;
 use gtk::{
     Application, ApplicationWindow, Entry, Label, ListBox, Orientation, ScrolledWindow, glib,
 };
+use sqlite::Connection;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -14,50 +16,22 @@ fn main() -> glib::ExitCode {
     // Load configuration
     let config = AppConfig::load();
 
+    // Initialize database connection
+    let connection = Rc::new(database::connect_to_database(&config.database_path).unwrap());
+
     // Create a new application
     let app = Application::builder().application_id(APP_ID).build();
 
     // Connect to "activate" signal of `app`
     app.connect_activate(move |app| {
-        build_ui(app, config.clone());
+        build_ui(app, config.clone(), connection.clone());
     });
 
     // Run the application
     app.run()
 }
 
-fn build_ui(app: &Application, config: AppConfig) {
-    let search_data = vec![
-        "apple".to_string(),
-        "banana".to_string(),
-        "cherry".to_string(),
-        "date".to_string(),
-        "elderberry".to_string(),
-        "fig".to_string(),
-        "grape".to_string(),
-        "honeydew".to_string(),
-        "kiwi".to_string(),
-        "lemon".to_string(),
-        "mango".to_string(),
-        "nectarine".to_string(),
-        "orange".to_string(),
-        "pineapple".to_string(),
-        "quince".to_string(),
-        "raspberry".to_string(),
-        "strawberry".to_string(),
-        "tomato".to_string(),
-        "ugli".to_string(),
-        "vanilla".to_string(),
-        "watermelon".to_string(),
-        "xigua".to_string(),
-        "yuzu".to_string(),
-        "zucchini".to_string(),
-        "avocado".to_string(),
-        "blueberry".to_string(),
-        "cantaloupe".to_string(),
-        "dragonfruit".to_string(),
-    ];
-
+fn build_ui(app: &Application, config: AppConfig, connection: Rc<Connection>) {
     let list_box = Rc::new(RefCell::new(ListBox::new()));
     list_box
         .borrow_mut()
@@ -78,8 +52,8 @@ fn build_ui(app: &Application, config: AppConfig) {
         .primary_icon_name("system-search")
         .build();
 
+    let connection_clone = Rc::clone(&connection);
     let list_box_clone = Rc::clone(&list_box);
-    let search_data_clone = Rc::new(search_data);
 
     search_entry.connect_changed(move |entry| {
         let text = entry.text().to_lowercase();
@@ -89,12 +63,11 @@ fn build_ui(app: &Application, config: AppConfig) {
             list_box_clone.borrow().remove(&child);
         }
 
-        // Filter and display matching items
-        for item in search_data_clone.iter() {
-            if item.contains(&text) {
-                let label = Label::new(Some(item));
-                list_box_clone.borrow().append(&label);
-            }
+        let results = database::get_songs(&connection_clone, &text).unwrap();
+
+        for song in results.iter() {
+            let label = Label::new(Some(&song.title));
+            list_box_clone.borrow().append(&label);
         }
     });
 
