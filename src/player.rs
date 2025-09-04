@@ -1,39 +1,65 @@
-use gtk::Application;
+use std::path::Path;
+use std::process::{Child, Command};
 
-use crate::ui;
-use std::process::Command;
+pub struct Player;
 
-pub fn ensure_player(app: &Application) -> Option<()> {
-    let status = Command::new("vlc").arg("--version").output();
+impl Player {
+    pub fn new() -> Self {
+        Player
+    }
 
-    match status {
-        Ok(output) => {
-            if output.status.success() {
-                Some(())
-            } else {
-                ui::show_error_and_exit(app, &format!("VLC is not installed or not available"));
-                None
-            }
+    pub fn ensure_available() -> Result<(), String> {
+        let output = Command::new("vlc")
+            .arg("--version")
+            .output()
+            .map_err(|e| format!("Failed to check VLC: {}", e))?;
+
+        if !output.status.success() {
+            return Err("VLC is not installed or not available in PATH".to_string());
         }
 
-        Err(e) => {
-            ui::show_error_and_exit(app, &format!("Failed to check VLC status: {}", e));
-            None
+        Ok(())
+    }
+
+    pub fn play_file(&self, file_path: &str) -> Result<Child, String> {
+        if !Path::new(file_path).exists() {
+            return Err(format!("File does not exist: {}", file_path));
         }
+
+        let extension = Path::new(file_path)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        if !Self::is_supported_format(&extension) {
+            return Err(format!("Unsupported file format: .{}", extension));
+        }
+
+        Command::new("vlc")
+            .arg("--play-and-exit")
+            .arg(file_path)
+            .spawn()
+            .map_err(|e| format!("Failed to start VLC with GUI: {}", e))
+    }
+
+    fn is_supported_format(extension: &str) -> bool {
+        matches!(
+            extension,
+            "mp3" | "flac" | "wav" | "ogg" | "m4a" | "aac" | "wma" | "opus" | "mp4" | "avi" | "mkv"
+        )
     }
 }
 
-pub fn play_song(song_file: &str) -> Option<()> {
-    let status = Command::new("vlc").arg(song_file).spawn();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    match status {
-        Ok(child) => {
-            println!("VLC process started: {:?}", child.id());
-            Some(())
-        }
-        Err(e) => {
-            eprintln!("Failed to start VLC process: {}", e);
-            None
-        }
+    #[test]
+    fn test_supported_formats() {
+        assert!(Player::is_supported_format("mp3"));
+        assert!(Player::is_supported_format("mp4"));
+        assert!(!Player::is_supported_format("txt"));
+        assert!(!Player::is_supported_format(""));
     }
 }
