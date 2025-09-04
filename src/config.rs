@@ -1,3 +1,5 @@
+use crate::ui;
+use gtk::Application;
 use serde::Deserialize;
 use std::fs;
 
@@ -10,20 +12,18 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn load() -> Self {
-        let config_str = fs::read_to_string("config.toml");
-
-        match config_str {
+    pub fn load(app: &Application) -> Option<Self> {
+        match fs::read_to_string("config.toml") {
             Ok(config_str) => match toml::from_str(&config_str) {
                 Ok(config) => config,
                 Err(err) => {
-                    eprintln!("Failed to parse config.toml: {}", err);
-                    std::process::exit(1);
+                    ui::show_error_and_exit(app, &format!("Failed to parse config.toml: {}", err));
+                    None
                 }
             },
             Err(err) => {
-                eprintln!("Failed to read config.toml: {}", err);
-                std::process::exit(1);
+                ui::show_error_and_exit(app, &format!("Failed to read config.toml: {}", err));
+                None
             }
         }
     }

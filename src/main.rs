@@ -1,6 +1,7 @@
 mod config;
 mod database;
 mod player;
+mod ui;
 
 use config::AppConfig;
 use database::Song;
@@ -16,24 +17,21 @@ use std::rc::Rc;
 const APP_ID: &str = "org.luancgs.file-to-player";
 
 fn main() -> glib::ExitCode {
-    // Load configuration
-    let config = AppConfig::load();
-
-    // Ensure VLC is installed and available
-    player::ensure_player();
-
-    // Initialize database connection
-    let connection = Rc::new(database::connect_to_database(&config.database_path));
-
-    // Create a new application
     let app = Application::builder().application_id(APP_ID).build();
 
-    // Connect to "activate" signal of `app`
     app.connect_activate(move |app| {
-        build_ui(app, config.clone(), connection.clone());
+        let config = match AppConfig::load(app) {
+            Some(config) => config,
+            None => return,
+        };
+
+        player::ensure_player(app);
+
+        let connection = Rc::new(database::connect_to_database(&config.database_path));
+
+        build_ui(app, config, connection);
     });
 
-    // Run the application
     app.run()
 }
 
@@ -65,7 +63,6 @@ fn build_ui(app: &Application, config: AppConfig, connection: Rc<Connection>) {
     search_entry.connect_changed(move |entry| {
         let text = entry.text().to_lowercase();
 
-        // Clear the current list
         while let Some(child) = list_box_clone.borrow().first_child() {
             list_box_clone.borrow().remove(&child);
         }
@@ -110,7 +107,12 @@ fn create_song_button(config: AppConfig, song: &Song) -> Button {
     let song_full_path = format!("{}/{}", config.song_directory, song.file);
 
     button.connect_clicked(move |_| {
-        player::play_song(&song_full_path.clone());
+        let song_status = player::play_song(&song_full_path.clone());
+
+        match song_status {
+            Some(_) => (),
+            None => std::process::exit(1),
+        }
     });
 
     button
