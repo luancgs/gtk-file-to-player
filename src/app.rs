@@ -3,10 +3,11 @@ use crate::{
     database::Database,
     ui::{NotificationSystem, SongButton},
 };
-use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Entry, ListBox, Orientation, ScrolledWindow};
-use std::cell::RefCell;
-use std::rc::Rc;
+
+use gtk::{
+    Application, ApplicationWindow, Entry, ListBox, Orientation, ScrolledWindow, prelude::*,
+};
+use std::{cell::RefCell, rc::Rc};
 
 pub struct MainWindow {
     window: ApplicationWindow,
@@ -57,8 +58,8 @@ impl MainWindow {
         let window = ApplicationWindow::builder()
             .application(app)
             .title(&config.window_title)
-            .default_width(400)
-            .default_height(600)
+            .default_width(960)
+            .default_height(540)
             .child(&main_box)
             .build();
 
