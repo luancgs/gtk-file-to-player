@@ -1,5 +1,14 @@
 use sqlite::{Connection, State};
 use std::path::Path;
+use unicode_general_category::{GeneralCategory, get_general_category};
+use unicode_normalization::UnicodeNormalization;
+
+fn strip_accents(s: &str) -> String {
+    s.nfd()
+        .filter(|c| get_general_category(*c) != GeneralCategory::NonspacingMark)
+        .collect::<String>()
+        .to_lowercase()
+}
 
 #[derive(Debug, Clone)]
 pub struct Song {
@@ -42,14 +51,18 @@ impl Database {
     }
 
     pub fn search_songs(&self, search_text: &str) -> Result<Vec<Song>, String> {
-        if search_text.trim().is_empty() {
+        let parsed_input = strip_accents(search_text.trim());
+
+        println!("Searching for: {}", parsed_input);
+
+        if parsed_input.trim().is_empty() {
             return Ok(Vec::new());
         }
 
         let query = "
             SELECT number, title, file FROM song
             WHERE CAST(number AS TEXT) LIKE ?1 || '%'
-            OR title LIKE '%' || ?1 || '%'
+            OR title_ascii LIKE '%' || ?1 || '%'
             ORDER BY number ASC
             LIMIT 10;
         ";
@@ -60,7 +73,7 @@ impl Database {
             .map_err(|e| format!("Failed to prepare search query: {}", e))?;
 
         statement
-            .bind((1, search_text))
+            .bind((1, parsed_input.as_str()))
             .map_err(|e| format!("Failed to bind search parameter: {}", e))?;
 
         let mut results = Vec::new();
