@@ -38,6 +38,7 @@ impl Player {
 
         Command::new("vlc")
             .arg("--play-and-exit")
+            .arg("--fullscreen")
             .arg(file_path)
             .spawn()
             .map_err(|e| format!("Failed to start VLC with GUI: {}", e))
