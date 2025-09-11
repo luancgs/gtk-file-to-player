@@ -5,6 +5,7 @@ use std::fs;
 pub struct AppConfig {
     pub database_path: String,
     pub song_directory: String,
+    pub player_socket: String,
     pub window_title: String,
     pub search_placeholder: Option<String>,
 }
@@ -24,6 +25,10 @@ impl AppConfig {
 
         if self.song_directory.is_empty() {
             return Err("Song directory cannot be empty".to_string());
+        }
+
+        if self.player_socket.is_empty() {
+            return Err("Player socket cannot be empty".to_string());
         }
 
         if self.window_title.is_empty() {
